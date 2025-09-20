@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhisperShelf</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom scrollbar for a better look */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #e2e8f0; /* a light gray */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #A686EC; /* light purple from palette */
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #8382EB; /* lavender from palette */
+      }
+
+      /* Toast Animations */
+      @keyframes toast-in {
+        from {
+          transform: translateY(-100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      @keyframes toast-out {
+        from {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateY(-100%);
+          opacity: 0;
+        }
+      }
+      .animate-toast-in {
+        animation: toast-in 0.3s ease-out forwards;
+      }
+      .animate-toast-out {
+        animation: toast-out 0.3s ease-in forwards;
+      }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/WhisperShelf/assets/index-BhX5xBtv.js"></script>
+</head>
+  <body class="bg-[#F7F8FC] text-[#2D3748]">
+    <div id="root"></div>
+  </body>
+</html>
