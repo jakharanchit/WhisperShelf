@@ -133,7 +133,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchAndRestoreState = async () => {
       try {
-        const response = await fetch('/manifest.json');
+  const response = await fetch(import.meta.env.BASE_URL + 'manifest.json');
         const manifest = await response.json();
         const allBooks = manifest.books as Book[];
         dispatch({ type: 'SET_BOOKS', payload: allBooks });
@@ -443,7 +443,7 @@ const App: React.FC = () => {
       ) : (
         <div 
           className="min-h-screen w-full bg-cover bg-center bg-no-repeat" 
-          style={{ backgroundImage: "url('/img/hp-bg.jpg')" }}
+          style={{ backgroundImage: `url(${import.meta.env.BASE_URL}img/hp-bg.jpg)` }}
         >
           <div className="min-h-screen w-full flex flex-col animate-fade-in bg-black/50">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
