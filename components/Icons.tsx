@@ -1,4 +1,3 @@
-import React from 'react';
 
 export const PlayIcon = ({ className = 'w-6 h-6' }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M4.018 14.386V5.614a1 1 0 0 1 1.504-.864l7.996 4.386a1 1 0 0 1 0 1.728l-7.996 4.386a1 1 0 0 1-1.504-.864Z"></path></svg>

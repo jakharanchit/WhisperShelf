@@ -5,122 +5,11 @@ import { BookView } from './components/BookView';
 import { Toast as ToastComponent } from './components/Toast';
 import { Search } from './components/Search';
 import { Loader } from './components/Loader';
+import { asset } from '@/utils/asset';
+import { appReducer, initialState } from './state/player';
 
 const PLAYER_STATE_KEY = 'audiobookPlayerState';
 const BOOKMARKS_KEY = 'audiobookPlayerBookmarks';
-
-type State = {
-  books: Book[];
-  filteredBooks: Book[];
-  isLoading: boolean;
-  searchQuery: string;
-  selectedBook: Book | null;
-  currentTrack: CurrentTrack | null;
-  isPlaying: boolean;
-  progress: number;
-  duration: number;
-  playbackRate: number;
-  volume: number;
-  isChapterListVisible: boolean;
-  bookmarks: Bookmark[];
-  sleepTimerType: 'eoc' | number | null;
-  toasts: Toast[];
-};
-
-type Action =
-  | { type: 'SET_BOOKS'; payload: Book[] }
-  | { type: 'SET_SEARCH_QUERY'; payload: string }
-  | { type: 'SET_SELECTED_BOOK'; payload: Book | null }
-  | { type: 'SET_CURRENT_TRACK'; payload: CurrentTrack }
-  | { type: 'SET_PLAYING'; payload: boolean }
-  | { type: 'SET_PROGRESS'; payload: number }
-  | { type: 'SET_DURATION'; payload: number }
-  | { type: 'SET_PLAYBACK_RATE'; payload: number }
-  | { type: 'SET_VOLUME'; payload: number }
-  | { type: 'TOGGLE_CHAPTER_LIST' }
-  | { type: 'SET_BOOKMARKS'; payload: Bookmark[] }
-  | { type: 'ADD_BOOKMARK' }
-  | { type: 'DELETE_BOOKMARK'; payload: string }
-  | { type: 'SET_SLEEP_TIMER'; payload: 'eoc' | number | null }
-  | { type: 'ADD_TOAST'; payload: Omit<Toast, 'id'> }
-  | { type: 'REMOVE_TOAST'; payload: string };
-
-
-const initialState: State = {
-  books: [],
-  filteredBooks: [],
-  isLoading: true,
-  searchQuery: '',
-  selectedBook: null,
-  currentTrack: null,
-  isPlaying: false,
-  progress: 0,
-  duration: 0,
-  playbackRate: 1,
-  volume: 1,
-  isChapterListVisible: false,
-  bookmarks: [],
-  sleepTimerType: null,
-  toasts: [],
-};
-
-const appReducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case 'SET_BOOKS':
-      return { ...state, books: action.payload, filteredBooks: action.payload, isLoading: false };
-    case 'SET_SEARCH_QUERY':
-      const query = action.payload.toLowerCase();
-      const filtered = state.books.filter(
-        (book) =>
-          book.title.toLowerCase().includes(query) ||
-          book.author.toLowerCase().includes(query)
-      );
-      return { ...state, searchQuery: action.payload, filteredBooks: filtered };
-    case 'SET_SELECTED_BOOK':
-      return { ...state, selectedBook: action.payload };
-    case 'SET_CURRENT_TRACK':
-      return { ...state, currentTrack: action.payload, progress: 0 };
-    case 'SET_PLAYING':
-      return { ...state, isPlaying: action.payload };
-    case 'SET_PROGRESS':
-        return { ...state, progress: action.payload };
-    case 'SET_DURATION':
-        return { ...state, duration: action.payload };
-    case 'SET_PLAYBACK_RATE':
-        return { ...state, playbackRate: action.payload };
-    case 'SET_VOLUME':
-        return { ...state, volume: action.payload };
-    case 'TOGGLE_CHAPTER_LIST':
-        return { ...state, isChapterListVisible: !state.isChapterListVisible };
-    case 'SET_BOOKMARKS':
-        return { ...state, bookmarks: action.payload };
-    case 'ADD_BOOKMARK':
-        if (!state.currentTrack) return state;
-        const { book, chapter } = state.currentTrack;
-        const newBookmark: Bookmark = {
-            id: Date.now().toString(),
-            bookId: book.id,
-            bookTitle: book.title,
-            chapterNum: chapter.num,
-            chapterTitle: chapter.title,
-            progress: state.progress,
-            createdAt: Date.now(),
-        };
-        const newBookmarks = [newBookmark, ...state.bookmarks].sort((a,b) => b.createdAt - a.createdAt);
-        return { ...state, bookmarks: newBookmarks };
-    case 'DELETE_BOOKMARK':
-        return { ...state, bookmarks: state.bookmarks.filter(b => b.id !== action.payload) };
-    case 'SET_SLEEP_TIMER':
-        return { ...state, sleepTimerType: action.payload };
-    case 'ADD_TOAST':
-        const newToast = { ...action.payload, id: Date.now().toString() };
-        return { ...state, toasts: [...state.toasts, newToast] };
-    case 'REMOVE_TOAST':
-        return { ...state, toasts: state.toasts.filter(t => t.id !== action.payload) };
-    default:
-      return state;
-  }
-};
 
 const App: React.FC = () => {
   const [state, dispatch] = useReducer(appReducer, initialState);
@@ -128,12 +17,13 @@ const App: React.FC = () => {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const initialSeekTime = useRef<number | null>(null);
-  const sleepTimerIdRef = useRef<any>(null);
+  const sleepTimerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefetchedNextSrcRef = useRef<string | null>(null);
 
   useEffect(() => {
     const fetchAndRestoreState = async () => {
       try {
-  const response = await fetch(import.meta.env.BASE_URL + 'manifest.json');
+        const response = await fetch(asset('manifest.json'));
         const manifest = await response.json();
         const allBooks = manifest.books as Book[];
         dispatch({ type: 'SET_BOOKS', payload: allBooks });
@@ -163,6 +53,7 @@ const App: React.FC = () => {
       } catch (error) {
         console.error("Failed to fetch manifest or restore state:", error);
         dispatch({ type: 'SET_BOOKS', payload: [] });
+        dispatch({ type: 'ADD_TOAST', payload: { message: 'Failed to load library manifest. Please check your connection and try again.', type: 'error' } });
       }
     };
     fetchAndRestoreState();
@@ -193,6 +84,39 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
   }, [bookmarks]);
+
+  // Persist player state on tab hide/visibility change to avoid losing progress on abrupt closes
+  useEffect(() => {
+    const persist = () => {
+      if (currentTrack) {
+        const stateToSave = {
+          bookId: currentTrack.book.id,
+          chapterNum: currentTrack.chapter.num,
+          progress,
+          playbackRate,
+          volume,
+        };
+        try {
+          localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(stateToSave));
+        } catch (_err) {
+          // noop: best-effort persistence
+        }
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') persist();
+    };
+
+    const onPageHide = () => persist();
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [currentTrack, progress, playbackRate, volume]);
 
   const handleSelectBook = useCallback((book: Book) => {
     dispatch({ type: 'SET_SELECTED_BOOK', payload: book });
@@ -351,9 +275,9 @@ const App: React.FC = () => {
         if (isPlaying) {
           try {
             await audio.play();
-          } catch (error: any) {
-            if (error.name !== 'AbortError') {
-              console.error("Audio play failed:", error);
+          } catch (err) {
+            if (!(err instanceof DOMException && err.name === 'AbortError')) {
+              console.error("Audio play failed:", err);
               dispatch({ type: 'SET_PLAYING', payload: false });
             }
           }
@@ -393,6 +317,120 @@ const App: React.FC = () => {
     };
   }, [playNextChapter]);
 
+  // Prefetch next chapter metadata when track changes (low overhead improvement)
+  useEffect(() => {
+    if (!state.currentTrack) return;
+    const { book, chapter } = state.currentTrack;
+    const currentIndex = book.chapters.findIndex((c) => c.num === chapter.num);
+    if (currentIndex === -1) return;
+    const next = book.chapters[currentIndex + 1];
+    if (!next) return;
+    if (prefetchedNextSrcRef.current === next.url) return;
+    try {
+      const a = new Audio();
+      a.preload = 'metadata';
+      a.src = next.url;
+      a.load();
+      prefetchedNextSrcRef.current = next.url;
+    } catch (_) {
+      // Best-effort prefetch, ignore errors
+    }
+  }, [state.currentTrack]);
+
+  // Warm up the exact audio host with a preconnect link for the current track
+  useEffect(() => {
+    if (!state.currentTrack) return;
+    try {
+      const origin = new URL(state.currentTrack.chapter.url).origin;
+      const link = document.createElement('link');
+      link.rel = 'preconnect';
+      link.href = origin;
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+      return () => {
+        document.head.removeChild(link);
+      };
+    } catch (_) {
+      // ignore
+    }
+  }, [state.currentTrack]);
+
+  // Issue a tiny range request to warm DNS/TLS and caches for current track
+  useEffect(() => {
+    if (!state.currentTrack) return;
+    const controller = new AbortController();
+    const url = state.currentTrack.chapter.url;
+    (async () => {
+      try {
+        await fetch(url, {
+          method: 'GET',
+          headers: { Range: 'bytes=0-0' },
+          mode: 'cors',
+          signal: controller.signal,
+        });
+      } catch (_) {
+        // best-effort; ignore errors
+      }
+    })();
+    return () => controller.abort();
+  }, [state.currentTrack]);
+
+  // Keyboard shortcuts for playback and navigation
+  useEffect(() => {
+    const isEditable = (el: Element | null) => {
+      if (!el) return false;
+      const node = el as HTMLElement;
+      const tag = node.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+      return !!node.isContentEditable;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEditable(document.activeElement)) return;
+      if (!currentTrack) return;
+
+      switch (e.key) {
+        case ' ': // Space
+        case 'k':
+          e.preventDefault();
+          dispatch({ type: 'SET_PLAYING', payload: !isPlaying });
+          break;
+        case 'ArrowLeft':
+        case 'j':
+          e.preventDefault();
+          if (audioRef.current) {
+            const t = Math.max(0, audioRef.current.currentTime - 10);
+            audioRef.current.currentTime = t;
+            dispatch({ type: 'SET_PROGRESS', payload: t });
+          }
+          break;
+        case 'ArrowRight':
+        case 'l':
+          e.preventDefault();
+          if (audioRef.current) {
+            const dur = duration || audioRef.current.duration || Number.POSITIVE_INFINITY;
+            const t = Math.min(dur, audioRef.current.currentTime + 10);
+            audioRef.current.currentTime = t;
+            dispatch({ type: 'SET_PROGRESS', payload: t });
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          dispatch({ type: 'SET_VOLUME', payload: Math.min(1, volume + 0.05) });
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          dispatch({ type: 'SET_VOLUME', payload: Math.max(0, volume - 0.05) });
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [currentTrack, isPlaying, volume, duration]);
+
   const handleSearchChange = useCallback((query: string) => {
     dispatch({ type: 'SET_SEARCH_QUERY', payload: query });
   }, []);
@@ -410,7 +448,8 @@ const App: React.FC = () => {
         ))}
       </div>
 
-       <audio ref={audioRef} />
+       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+       <audio ref={audioRef} preload={selectedBook && currentTrack ? 'auto' : 'metadata'} />
        
       {selectedBook && currentTrack ? (
         <BookView 
@@ -424,6 +463,7 @@ const App: React.FC = () => {
           volume={volume}
           isChapterListVisible={isChapterListVisible}
           sleepTimerType={sleepTimerType}
+          isLoadingMetadata={duration === 0}
           onBack={handleBackToGrid} 
           onSelectChapter={handleSelectChapter} 
           onPlayPause={handlePlayPause}
@@ -433,7 +473,7 @@ const App: React.FC = () => {
           onRewind={handleRewind}
           onForward={handleForward}
           onPlaybackRateChange={handlePlaybackRateChange}
-  onVolumeChange={handleVolumeChange}
+          onVolumeChange={handleVolumeChange}
           onToggleChapterList={handleToggleChapterList}
           onAddBookmark={handleAddBookmark}
           onDeleteBookmark={handleDeleteBookmark}
@@ -443,7 +483,7 @@ const App: React.FC = () => {
       ) : (
         <div 
           className="min-h-screen w-full bg-cover bg-center bg-no-repeat" 
-          style={{ backgroundImage: `url(${import.meta.env.BASE_URL}img/hp-bg.jpg)` }}
+          style={{ backgroundImage: `url(${asset('img/hp-bg.jpg')})` }}
         >
           <div className="min-h-screen w-full flex flex-col animate-fade-in bg-black/50">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
@@ -467,7 +507,7 @@ const App: React.FC = () => {
                     />
                 ) : (
                     <div className="text-center py-16 bg-black/30 rounded-lg px-8">
-                        <p className="text-white">No books found for "{searchQuery}".</p>
+                        <p className="text-white">No books found for &quot;{searchQuery}&quot;.</p>
                     </div>
                 )}
             </div>

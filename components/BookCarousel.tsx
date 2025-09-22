@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Book } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon } from './Icons';
+import { asset } from '@/utils/asset';
 
 interface BookCarouselProps {
   books: Book[];
@@ -40,34 +41,49 @@ export const BookCarousel: React.FC<BookCarouselProps> = ({ books, onSelectBook 
                     const isVisible = distance <= 2;
                     const isCurrent = offset === 0;
 
+                    if (!isVisible) return null; // render window only
+
                     const scale = 1 - distance * 0.15;
-                    const opacity = isVisible ? 1 - distance * 0.3 : 0;
+                    const opacity = 1 - distance * 0.3;
                     const zIndex = books.length - distance;
                     const translateX = offset * 35; // %
 
                     return (
                         <div
                             key={book.id}
+                            role={!isCurrent ? 'button' : undefined}
+                            tabIndex={!isCurrent ? 0 : -1}
+                            aria-label={!isCurrent ? `Focus ${book.title}` : undefined}
                             className={`absolute top-0 left-0 w-full h-full transition-all duration-500 ease-out flex justify-center items-center ${!isCurrent ? 'cursor-pointer' : ''}`}
                             style={{
                                 transform: `translateX(${translateX}%) scale(${scale})`,
                                 opacity: opacity,
                                 zIndex: zIndex,
-                                visibility: isVisible ? 'visible' : 'hidden',
                             }}
                             onClick={() => {
                                 if (!isCurrent) {
                                     setCurrentIndex(index);
                                 }
                             }}
+                            onKeyDown={(e) => {
+                                if (!isCurrent && (e.key === 'Enter' || e.key === ' ')) {
+                                    e.preventDefault();
+                                    setCurrentIndex(index);
+                                }
+                            }}
                         >
                             <div 
+                                role={isCurrent ? 'button' : undefined}
+                                tabIndex={isCurrent ? 0 : -1}
+                                aria-label={isCurrent ? `Open ${book.title}` : undefined}
                                 className={`relative aspect-[2/3] h-full max-h-full transition-shadow duration-500 ${isCurrent ? 'cursor-pointer shadow-2xl' : 'shadow-lg'}`}
                                 onClick={() => { if(isCurrent) onSelectBook(book) }}
+                                onKeyDown={(e) => { if (isCurrent && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onSelectBook(book); } }}
                             >
                                 <img
-                                    src={book.cover}
+                                    src={asset(book.cover)}
                                     alt={book.title}
+                                    loading="lazy"
                                     className="w-full h-full object-cover rounded-2xl"
                                 />
                                 <div className={`absolute inset-0 rounded-2xl transition-all duration-500 ${isCurrent ? 'bg-black/10' : 'bg-black/50'}`}></div>

@@ -2,8 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
+    <meta name="theme-color" content="#A686EC" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://archive.org" crossorigin />
+    <link rel="dns-prefetch" href="https://archive.org" />
     <title>WhisperShelf</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -49,16 +52,15 @@
       .animate-toast-out {
         animation: toast-out 0.3s ease-in forwards;
       }
+
+      /* Respect reduced motion preferences */
+      @media (prefers-reduced-motion: reduce) {
+        .animate-toast-in,
+        .animate-toast-out,
+        .animate-fade-in,
+        .animate-spin { animation: none !important; }
+      }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
-  }
-}
-</script>
 <!-- <link rel="stylesheet" href="/index.css"> -->
 </head>
   <body class="bg-[#F7F8FC] text-[#2D3748]">

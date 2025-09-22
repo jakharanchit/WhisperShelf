@@ -19,6 +19,8 @@ import {
     VolumeOffIcon
 } from './Icons';
 import { ProgressBar } from './ProgressBar';
+import { asset } from '@/utils/asset';
+import { formatTime } from '@/utils/format';
 
 interface BookViewProps {
   book: Book;
@@ -31,6 +33,7 @@ interface BookViewProps {
   volume: number;
   isChapterListVisible: boolean;
   sleepTimerType: 'eoc' | number | null;
+  isLoadingMetadata: boolean;
   onBack: () => void;
   onSelectChapter: (book: Book, chapter: Chapter) => void;
   onPlayPause: () => void;
@@ -47,13 +50,6 @@ interface BookViewProps {
   onSelectBookmark: (bookmark: Bookmark) => void;
   onSetSleepTimer: (type: 'eoc' | number | null) => void;
 }
-
-const formatTime = (seconds: number) => {
-  if (isNaN(seconds) || seconds < 0) return '00:00';
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
 
 
 const FooterButton: React.FC<{buttonRef?: React.RefObject<HTMLButtonElement>, onClick?: () => void; children: React.ReactNode; label: string; active?: boolean}> = ({ buttonRef, onClick, children, label, active }) => (
@@ -124,6 +120,7 @@ const SleepTimerModal: React.FC<{
 
     const modalNode = modalRef.current;
     if (!modalNode) return;
+    const triggerEl = triggerRef.current;
 
     const focusableElements = modalNode.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     const firstElement = focusableElements[0];
@@ -153,7 +150,7 @@ const SleepTimerModal: React.FC<{
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      triggerRef.current?.focus();
+      triggerEl?.focus();
     };
   }, [isOpen, onClose, triggerRef]);
 
@@ -167,10 +164,10 @@ const SleepTimerModal: React.FC<{
   ];
 
   return (
-    <div className="absolute inset-0 bg-black/40 z-20 flex justify-center items-end animate-fade-in" onClick={onClose}>
-      <div ref={modalRef} className="bg-white w-full max-w-md rounded-t-2xl p-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div className="absolute inset-0 bg-black/40 z-20 flex justify-center items-end animate-fade-in" role="button" aria-label="Close" tabIndex={0} onClick={(e) => { if (e.currentTarget === e.target) onClose(); }} onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') onClose(); }}>
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="sleep-title" className="bg-white w-full max-w-md rounded-t-2xl p-4 shadow-2xl">
         <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4"></div>
-        <h3 className="text-lg font-bold text-center text-[#2D3748] mb-4">Sleep Timer</h3>
+        <h3 id="sleep-title" className="text-lg font-bold text-center text-[#2D3748] mb-4">Sleep Timer</h3>
         <ul className="space-y-2">
           {options.map(opt => (
             <li key={opt.value}>
@@ -210,6 +207,7 @@ export const BookView: React.FC<BookViewProps> = ({
     volume,
     isChapterListVisible,
     sleepTimerType,
+    isLoadingMetadata,
     onBack, 
     onSelectChapter,
     onPlayPause,
@@ -238,6 +236,7 @@ export const BookView: React.FC<BookViewProps> = ({
 
     const modalNode = chapterListModalRef.current;
     if (!modalNode) return;
+    const triggerEl = chapterListButtonRef.current;
 
     const focusableElements = modalNode.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -269,7 +268,7 @@ export const BookView: React.FC<BookViewProps> = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      chapterListButtonRef.current?.focus();
+      triggerEl?.focus();
     };
   }, [isChapterListVisible, onToggleChapterList]);
   
@@ -293,7 +292,7 @@ export const BookView: React.FC<BookViewProps> = ({
             <main className="flex-grow flex flex-col items-center justify-around gap-4">
                 <div className="flex-shrink-0 w-full max-w-sm">
                     <img
-                        src={book.cover}
+                        src={asset(book.cover)}
                         alt={book.title}
                         className="w-full rounded-lg shadow-2xl aspect-square object-cover"
                     />
@@ -306,6 +305,12 @@ export const BookView: React.FC<BookViewProps> = ({
 
                 <div className="w-full max-w-sm">
                     <ProgressBar progress={progress} duration={duration} onSeek={onSeek} />
+                    {isLoadingMetadata && (
+                      <div className="mt-2 flex items-center justify-center gap-2" role="status" aria-live="polite">
+                        <span className="inline-block w-4 h-4 border-2 border-[#A686EC] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-[#718096]">Loading audio…</span>
+                      </div>
+                    )}
                 </div>
                 
                 {/* Main Controls */}
@@ -348,14 +353,21 @@ export const BookView: React.FC<BookViewProps> = ({
         {isChapterListVisible && (
             <div 
                 className="absolute inset-0 bg-black/40 z-10 animate-fade-in"
-                onClick={onToggleChapterList}
+                role="button"
+                aria-label="Close"
+                tabIndex={0}
+                onClick={(e) => { if (e.currentTarget === e.target) onToggleChapterList(); }}
+                onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') onToggleChapterList(); }}
             >
                 <div 
                     ref={chapterListModalRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="chapters-title"
                     className="absolute bottom-0 left-0 right-0 max-h-[80%] bg-white rounded-t-2xl p-4 overflow-y-auto shadow-2xl flex flex-col"
-                    onClick={(e) => e.stopPropagation()}
                 >
                     <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 flex-shrink-0"></div>
+                    <h2 id="chapters-title" className="sr-only">Chapters and Bookmarks</h2>
                     
                     <div className="border-b border-gray-200 mb-4 flex-shrink-0">
                         <nav className="-mb-px flex space-x-6">
@@ -390,10 +402,10 @@ export const BookView: React.FC<BookViewProps> = ({
                                     <ul className="space-y-2">
                                         {bookmarks.map(bookmark => (
                                             <li key={bookmark.id} className="flex items-center p-3 bg-white rounded-lg group">
-                                                <div className="flex-grow cursor-pointer" onClick={() => onSelectBookmark(bookmark)}>
+                                                <button type="button" className="flex-grow text-left" onClick={() => onSelectBookmark(bookmark)}>
                                                     <p className="font-semibold text-[#4A5568]">{bookmark.chapterTitle}</p>
                                                     <p className="text-sm text-[#718096]">{bookmark.bookTitle} - at {formatTime(bookmark.progress)}</p>
-                                                </div>
+                                                </button>
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); onDeleteBookmark(bookmark.id); }} 
                                                     className="p-2 -mr-2 text-[#A0AEC0] hover:text-red-500 transition-colors" 
@@ -405,7 +417,7 @@ export const BookView: React.FC<BookViewProps> = ({
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p className="text-[#718096] text-center py-8">You haven't saved any bookmarks yet.</p>
+                                    <p className="text-[#718096] text-center py-8">You haven&apos;t saved any bookmarks yet.</p>
                                 )}
                             </div>
                         )}

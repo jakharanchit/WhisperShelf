@@ -19,23 +19,26 @@ export const ChapterList: React.FC<ChapterListProps> = ({ book, currentTrack, is
           const isCurrentlyPlaying = isCurrentChapter && isPlaying;
           
           return (
-            <li 
-              key={chapter.num}
-              className="flex items-center p-3 bg-white rounded-lg hover:bg-[#F0F5FF] transition-colors group cursor-pointer"
-              onClick={() => onSelectChapter(book, chapter)}
-            >
-              <div className="flex-shrink-0 w-10 h-10 bg-[#E0E7FF] rounded-full flex items-center justify-center mr-4">
-                {isCurrentlyPlaying ? (
-                   <PauseIcon className="w-5 h-5 text-[#A686EC]" />
-                ) : isCurrentChapter ? (
-                   <PlayIcon className="w-5 h-5 text-[#A686EC]" />
-                ): (
-                   <span className="text-[#718096] group-hover:text-[#2D3748]">{chapter.num}</span>
-                )}
-              </div>
-              <div className="flex-grow">
-                <p className={`font-semibold ${isCurrentChapter ? 'text-[#A686EC]' : 'text-[#4A5568]'}`}>{chapter.title}</p>
-              </div>
+            <li key={chapter.num} className="">
+              <button 
+                type="button"
+                onClick={() => onSelectChapter(book, chapter)}
+                className="w-full flex items-center p-3 bg-white rounded-lg hover:bg-[#F0F5FF] transition-colors group"
+                aria-current={isCurrentChapter ? 'true' : undefined}
+              >
+                <span className="flex-shrink-0 w-10 h-10 bg-[#E0E7FF] rounded-full flex items-center justify-center mr-4">
+                  {isCurrentlyPlaying ? (
+                     <PauseIcon className="w-5 h-5 text-[#A686EC]" />
+                  ) : isCurrentChapter ? (
+                     <PlayIcon className="w-5 h-5 text-[#A686EC]" />
+                  ): (
+                     <span className="text-[#718096] group-hover:text-[#2D3748]">{chapter.num}</span>
+                  )}
+                </span>
+                <span className="flex-grow text-left">
+                  <span className={`font-semibold ${isCurrentChapter ? 'text-[#A686EC]' : 'text-[#4A5568]'}`}>{chapter.title}</span>
+                </span>
+              </button>
             </li>
           );
         })}

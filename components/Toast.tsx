@@ -12,13 +12,15 @@ export const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      handleDismiss();
+      setIsExiting(true);
+      const remove = setTimeout(() => onDismiss(toast.id), 300);
+      return () => clearTimeout(remove);
     }, 4000);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [toast.id]);
+  }, [toast.id, onDismiss]);
 
   const handleDismiss = () => {
     setIsExiting(true);
@@ -33,7 +35,9 @@ export const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
   return (
     <div
       className={`relative flex items-center justify-between w-full p-4 rounded-lg shadow-lg ${bgColor} ${textColor} ${isExiting ? 'animate-toast-out' : 'animate-toast-in'}`}
-      role="alert"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
       <p className="font-semibold">{toast.message}</p>
       <button

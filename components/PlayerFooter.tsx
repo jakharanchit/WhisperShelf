@@ -2,6 +2,7 @@ import React from 'react';
 import { CurrentTrack } from '../types';
 import { PlayIcon, PauseIcon, NextIcon, PreviousIcon } from './Icons';
 import { ProgressBar } from './ProgressBar';
+import { asset } from '@/utils/asset';
 
 interface PlayerFooterProps {
   currentTrack: CurrentTrack;
@@ -35,7 +36,7 @@ export const PlayerFooter: React.FC<PlayerFooterProps> = ({
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-24">
           <div className="flex items-center gap-4 w-1/4">
-            <img src={book.cover} alt={book.title} className="w-16 h-16 rounded-md shadow-lg" />
+            <img src={asset(book.cover)} alt={book.title} className="w-16 h-16 rounded-md shadow-lg" />
             <div>
               <p className="font-bold text-white truncate">{chapter.title}</p>
               <p className="text-sm text-gray-400 truncate">{book.title}</p>

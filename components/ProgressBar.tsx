@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { formatTime } from '@/utils/format';
 
 interface ProgressBarProps {
   progress: number;
@@ -6,23 +7,37 @@ interface ProgressBarProps {
   onSeek: (time: number) => void;
 }
 
-const formatTime = (seconds: number) => {
-  if (isNaN(seconds) || seconds < 0) return '00:00';
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
-
 export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, duration, onSeek }) => {
   const progressBarRef = useRef<HTMLDivElement>(null);
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleSeek = (clientX: number) => {
     if (!progressBarRef.current || !duration) return;
     const rect = progressBarRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
+    const clickX = clientX - rect.left;
     const width = rect.width;
     const percentage = clickX / width;
     onSeek(duration * percentage);
+  };
+
+  const onClickBar = (e: React.MouseEvent<HTMLDivElement>) => {
+    handleSeek(e.clientX);
+  };
+
+  const onKeyDownBar = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!duration) return;
+    if (e.key === 'Home') {
+      e.preventDefault();
+      onSeek(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      onSeek(duration);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      onSeek(Math.max(0, progress - 5));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      onSeek(Math.min(duration, progress + 5));
+    }
   };
 
   const progressPercentage = duration > 0 ? (progress / duration) * 100 : 0;
@@ -32,8 +47,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, duration, on
     <div className="w-full px-1">
         <div
             ref={progressBarRef}
+            role="slider"
+            aria-label="Seek"
+            aria-valuemin={0}
+            aria-valuemax={Math.floor(duration) || 0}
+            aria-valuenow={Math.floor(progress) || 0}
+            aria-valuetext={`${formatTime(progress)} elapsed`}
+            tabIndex={0}
             className="w-full h-1.5 bg-[#E0E7FF] rounded-full cursor-pointer group"
-            onClick={handleSeek}
+            onClick={onClickBar}
+            onKeyDown={onKeyDownBar}
         >
             <div
             className="h-1.5 bg-[#A686EC] rounded-full relative"
